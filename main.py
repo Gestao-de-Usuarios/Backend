@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request
 import sqlite3
 from flask_cors import CORS
 import bcrypt
+import base64
+
 
 app = Flask(__name__)
 CORS(app)  # Cors permite o front-end acessar os dados da API
@@ -30,6 +32,23 @@ def init_database():
     return 'Database initialized', 200
 
 
+# # Get sem a visualização da senha do usuário
+# @app.route('/users', methods=['GET'])
+# def get_users():
+#    try:
+#        db = get_connection()
+#        cursor = db.cursor()
+#        cursor.execute("SELECT id, nome, email, status, data_criacao, data_ultima_atualizacao FROM Usuarios")  # Não retorna a senha
+#        rows = cursor.fetchall()
+#        rows = [dict(row) for row in rows]
+#        return jsonify(rows)
+#    except sqlite3.Error as e:
+#        return jsonify({'error': str(e)}), 500
+#    finally:
+#        db.close()
+
+
+# Get com a visualização da senha do usuário hasheada
 @app.route('/users', methods=['GET'])
 def get_users():
     try:
@@ -38,6 +57,10 @@ def get_users():
         cursor.execute("SELECT * FROM Usuarios")
         rows = cursor.fetchall()
         rows = [dict(row) for row in rows]
+        
+        for row in rows:
+            row['senha'] = base64.b64encode(row['senha']).decode('utf-8')  # Converte o hash da senha para string
+        
         return jsonify(rows)
     except sqlite3.Error as e:
         return jsonify({'error': str(e)}), 500
@@ -45,12 +68,13 @@ def get_users():
         db.close()
 
 
+# Get sem a visualização da senha do usuário
 @app.route('/users/<int:user_id>', methods=['GET'])
 def get_user(user_id):
     try:
         db = get_connection()
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM Usuarios WHERE id=?", (user_id,))
+        cursor.execute("SELECT id, email, nome, status FROM Usuarios WHERE id=?", (user_id,))  # Não retorna a senha
         row = cursor.fetchone()
         if row:
             row = dict(row)
@@ -61,6 +85,7 @@ def get_user(user_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
 
 
 @app.route('/login', methods=['POST'])
@@ -135,7 +160,8 @@ def signup():
         db.close()
 
 
-@app.route('/users/<int:user_id>/block', methods=['POST'])
+
+@app.route('/users/<int:user_id>/block', methods=['PUT'])
 def block_user(user_id):
     try:
         db = get_connection()
@@ -150,6 +176,28 @@ def block_user(user_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+
+# Ativação de um usuário: curl -X PUT http://127.0.0.1:5000/users/1/activate
+@app.route('/users/<int:user_id>/activate', methods=['PUT'])
+def activate_user(user_id):
+    try:
+        db = get_connection()
+        cursor = db.cursor()
+
+        # Atualiza o status do usuário para "ativo"
+        cursor.execute("UPDATE Usuarios SET status='ativo' WHERE id=?", (user_id,))
+        db.commit()
+
+        return jsonify({'message': 'Usuário ativado com sucesso'}), 200
+
+    except sqlite3.Error as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
 
 
 if __name__ == '__main__':
