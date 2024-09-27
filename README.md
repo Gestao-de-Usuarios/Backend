@@ -24,7 +24,7 @@ Este é o backend de uma aplicação de gerenciamento de usuários construída c
 backend/
 ├── BancoDeDados.db
 ├── schema.sql
-├── app.py
+├── main.py
 ├── requirements.txt
 └── README.md
 ```
