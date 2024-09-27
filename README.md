@@ -33,7 +33,7 @@ backend/
 
 ### 1. Clone o Repositório
 ```bash
-git clone https://github.com/seu-usuario/seu-repositorio-backend.git
+git clone https://github.com/Gestao-de-Usuarios/Backend.git
 cd seu-repositorio-backend
 ```
 
