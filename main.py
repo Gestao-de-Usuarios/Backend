@@ -179,7 +179,7 @@ def block_user(user_id):
 
 
 
-# Ativação de um usuário: curl -X PUT http://127.0.0.1:5000/users/1/activate
+# Ativação de um usuário (cmd): curl -X PUT http://127.0.0.1:5000/users/1/activate
 @app.route('/users/<int:user_id>/activate', methods=['PUT'])
 def activate_user(user_id):
     try:
