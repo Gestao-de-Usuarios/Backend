@@ -121,18 +121,3 @@ O servidor estará disponível em http://127.0.0.1:5000/ por padrão.
 ## 🔒 Segurança
 - **Hashing de Senhas**: As senhas dos usuários são armazenadas de forma segura utilizando bcrypt.
 - **CORS**: Configurado com Flask-Cors para permitir que o frontend acesse a API.
-
-## 📄 Licença
-Este projeto está licenciado sob a Licença MIT.
-
-## 🤝 Contribuições
-Contribuições são bem-vindas!
-
-Fork o Repositório:
-- Crie uma Branch (`git checkout -b feature/nome-da-feature`)
-- Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
-- Push para a Branch (`git push origin feature/nome-da-feature`)
-- Abra um Pull Request
-
-## 📞 Contato
-Para dúvidas ou sugestões, entre em contato através do email seu-email@example.com.
