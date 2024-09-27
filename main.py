@@ -32,22 +32,6 @@ def init_database():
     return 'Database initialized', 200
 
 
-# # Get sem a visualização da senha do usuário
-# @app.route('/users', methods=['GET'])
-# def get_users():
-#    try:
-#        db = get_connection()
-#        cursor = db.cursor()
-#        cursor.execute("SELECT id, nome, email, status, data_criacao, data_ultima_atualizacao FROM Usuarios")  # Não retorna a senha
-#        rows = cursor.fetchall()
-#        rows = [dict(row) for row in rows]
-#        return jsonify(rows)
-#    except sqlite3.Error as e:
-#        return jsonify({'error': str(e)}), 500
-#    finally:
-#        db.close()
-
-
 # Get com a visualização da senha do usuário hasheada
 @app.route('/users', methods=['GET'])
 def get_users():
@@ -59,7 +43,7 @@ def get_users():
         rows = [dict(row) for row in rows]
         
         for row in rows:
-            row['senha'] = base64.b64encode(row['senha']).decode('utf-8')  # Converte o hash da senha para string
+            row['senha'] = base64.b64encode(row['senha']).decode('utf-8')  # Converte o hash da senha para string, pode ser comentado se nãoquiser visualizar a senha
         
         return jsonify(rows)
     except sqlite3.Error as e:
@@ -92,7 +76,6 @@ def get_user(user_id):
 def login():
     data = request.get_json()
 
-    # Verifica se os campos obrigatórios foram enviados
     if not data.get('email') or not data.get('senha'):
         return jsonify({'error': 'Email e senha são obrigatórios'}), 400
 
@@ -103,7 +86,6 @@ def login():
         db = get_connection()
         cursor = db.cursor()
 
-        # Verifica se o usuário existe no banco de dados
         cursor.execute("SELECT * FROM Usuarios WHERE email=?", (email,))
         user = cursor.fetchone()
 
@@ -141,14 +123,12 @@ def signup():
         db = get_connection()
         cursor = db.cursor()
 
-        # Verifica se o usuário existe no banco de dados
         cursor.execute("SELECT * FROM Usuarios WHERE email=?", (email,))
         user = cursor.fetchone()
 
         if user is not None:
             return jsonify({'error': 'Email ja esta Cadastrado!'}), 400
 
-        # Cria um novo usuário no banco de dados
         cursor.execute("INSERT INTO Usuarios (email, senha, nome) VALUES (?, ?, ?)", (email, hashed_senha, nome))
         db.commit()
 
@@ -186,7 +166,6 @@ def activate_user(user_id):
         db = get_connection()
         cursor = db.cursor()
 
-        # Atualiza o status do usuário para "ativo"
         cursor.execute("UPDATE Usuarios SET status='ativo' WHERE id=?", (user_id,))
         db.commit()
 
