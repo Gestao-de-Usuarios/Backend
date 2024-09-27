@@ -38,6 +38,7 @@ cd .\Backend\
 ```
 
 ### 2. Crie um Ambiente Virtual (Recomendado)
+Tenha certeza de que o python esteja instalado em sua máquina, de preferência versão 12.3
 ```bash
 python -m venv venv
 ```
