@@ -58,7 +58,7 @@ def get_user(user_id):
     try:
         db = get_connection()
         cursor = db.cursor()
-        cursor.execute("SELECT id, email, nome, status FROM Usuarios WHERE id=?", (user_id,))  # Não retorna a senha
+        cursor.execute("SELECT id, email, nome, status, data_criacao, data_ultima_atualizacao FROM Usuarios WHERE id=?", (user_id,))  # Não retorna a senha
         row = cursor.fetchone()
         if row:
             row = dict(row)
@@ -69,6 +69,8 @@ def get_user(user_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
 
 
 
@@ -91,10 +93,13 @@ def login():
 
         if user is None:
             return jsonify({'error': 'Email ou senha inválidos'}), 400
-
         
+        if user['status'] == 'bloqueado':
+            return jsonify({'error': 'Usário bloqueado'}), 400
+
         if bcrypt.checkpw(senha, user['senha']):
             return jsonify({'message': 'Login bem-sucedido'}), 200
+        
         else:
             return jsonify({'error': 'Email ou senha inválidos'}), 400
 
@@ -147,7 +152,7 @@ def block_user(user_id):
         db = get_connection()
         cursor = db.cursor()
 
-        cursor.execute("UPDATE Usuarios SET status='bloqueado' WHERE id=?", (user_id,))
+        cursor.execute("UPDATE Usuarios SET status='bloqueado', data_ultima_atualizacao=CURRENT_TIMESTAMP WHERE id=?", (user_id,))
         db.commit()
 
         return jsonify({'message': 'Usário bloqueado com sucesso'}), 200
@@ -166,7 +171,7 @@ def activate_user(user_id):
         db = get_connection()
         cursor = db.cursor()
 
-        cursor.execute("UPDATE Usuarios SET status='ativo' WHERE id=?", (user_id,))
+        cursor.execute("UPDATE Usuarios SET status='ativo', data_ultima_atualizacao=CURRENT_TIMESTAMP WHERE id=?", (user_id,))
         db.commit()
 
         return jsonify({'message': 'Usuário ativado com sucesso'}), 200
@@ -175,6 +180,8 @@ def activate_user(user_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
 
 
 
