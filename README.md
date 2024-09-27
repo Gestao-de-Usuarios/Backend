@@ -1,4 +1,3 @@
-
 # Projeto Backend Flask
 
 ## 📋 Descrição
