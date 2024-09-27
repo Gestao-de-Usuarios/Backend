@@ -34,7 +34,7 @@ backend/
 ### 1. Clone o Repositório
 ```bash
 git clone https://github.com/Gestao-de-Usuarios/Backend.git
-cd seu-repositorio-backend
+cd .\Backend\
 ```
 
 ### 2. Crie um Ambiente Virtual (Recomendado)
