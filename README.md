@@ -45,7 +45,7 @@ python -m venv venv
 ### 3. Ative o Ambiente Virtual
 No Windows:
 ```bash
-venv\Scripts ctivate
+venv\Scripts\activate
 ```
 No macOS/Linux:
 ```bash
@@ -56,24 +56,16 @@ source venv/bin/activate
 ```bash
 pip install -r requirements.txt
 ```
+Após instalar tudo corretamenta, abra o arquivo no seu editor de código.
 
 ### 5. Configure o Banco de Dados
-Crie o Arquivo de Esquema (`schema.sql`):
-```sql
-CREATE TABLE IF NOT EXISTS Usuarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    senha BLOB NOT NULL,
-    nome TEXT NOT NULL,
-    status TEXT DEFAULT 'ativo',
-    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    data_ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+Verifique a existencia do arquivo: BancoDeDados.db
+
+Caso não exista ou tenha sido excluido, faça:
 
 Inicialize o Banco de Dados:
 ```bash
-python app.py
+python main.py
 ```
 
 Acesse o endpoint `/initdb` para inicializar o banco de dados:
@@ -83,7 +75,7 @@ curl http://127.0.0.1:5000/initdb
 
 ### 6. Rodando o Servidor Flask
 ```bash
-python app.py
+python main.py
 ```
 
 O servidor estará disponível em http://127.0.0.1:5000/ por padrão.
