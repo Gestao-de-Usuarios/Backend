@@ -1,6 +1,8 @@
-from flask import Flask, jsonify, request
-import sqlite3
+from flask import Flask, jsonify, request, redirect, url_for, session
 from flask_cors import CORS
+from flask_dance.contrib.google import make_google_blueprint, google
+import os
+import sqlite3
 import bcrypt
 import base64
 
@@ -8,8 +10,28 @@ import base64
 app = Flask(__name__)
 CORS(app)  # Cors permite o front-end acessar os dados da API
 
+client_id = "918255099801-l8jhvmphhep1v8uq1g914aab2ck533i5.apps.googleusercontent.com"
+client_secret = "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"
+app.secret_key = "teste123"
+
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+
 db = sqlite3.connect('BancoDeDados.db')
 DATABASE = 'BancoDeDados.db'
+
+
+
+#criação de uma rota para autenticar o usuário via google
+google_bp = make_google_blueprint(
+    client_id=client_id,
+    client_secret=client_secret,
+    #reprompt_consent=True,
+    scope=["profile", "email"],
+    redirect_to="authorized_google"
+)
+
+app.register_blueprint(google_bp, url_prefix="/login")
 
 
 def get_connection():
@@ -72,7 +94,7 @@ def get_user(user_id):
 
 
 
-
+##################################### LOGIN ##############################################
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -108,6 +130,51 @@ def login():
     finally:
         db.close()
 
+
+
+# Autenticação do usuário via google
+@app.route('/login/google')
+def login_google():
+    return redirect(url_for('google.login'))
+
+
+# Lidando com a resposta da autenticação
+@app.route('/login/google/authorized')
+def authorized_google():
+    response = google.get("/oauth2/v2/userinfo")
+    if not response.ok:
+        return 'Falha ao obter o perfil do usuário', 400
+    
+    user_info = response.json()
+    email = user_info['email']
+    nome = user_info.get('name', 'Usuário')
+    
+    try:
+        db = get_connection()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM Usuarios WHERE email=?", (email,))
+        user = cursor.fetchone()
+
+        if user is None:
+            cursor.execute("INSERT INTO Usuarios (email, nome, satus) VALUES (?, ?, ?)", (email, nome, 'ativo'))
+            db.commit()
+            user_id = cursor.lastrowid
+        else:
+            user_id = user['id']
+        
+        #Armazenar info da sessão
+        session['user_id'] = user_id
+        session['email'] = email
+        
+        return redirect('http://localhost:3000/home')
+    
+    except sqlite3.Error as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+    
+
+#################################### CADASTRO ############################################
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -146,6 +213,7 @@ def signup():
 
 
 
+
 @app.route('/users/<int:user_id>/block', methods=['PUT'])
 def block_user(user_id):
     try:
@@ -161,6 +229,8 @@ def block_user(user_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
 
 
 
