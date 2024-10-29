@@ -1,14 +1,25 @@
 from flask import Flask, jsonify, request, redirect, url_for, session
 from flask_cors import CORS
 from flask_dance.contrib.google import make_google_blueprint, google
+from flask_session import Session
 import os
 import sqlite3
 import bcrypt
 import base64
 
-
 app = Flask(__name__)
-CORS(app)  # Cors permite o front-end acessar os dados da API
+
+# Session configuration
+app.secret_key = "your-secret-key"
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = None
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production
+
+Session(app)
+
+CORS(app, supports_credentials=True)  # Cors permite o front-end acessar os dados da API
 
 client_id = "918255099801-l8jhvmphhep1v8uq1g914aab2ck533i5.apps.googleusercontent.com"
 client_secret = "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"
@@ -16,6 +27,8 @@ app.secret_key = "teste123"
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+
+#app.config['SESSION_COOKIE_SECURE'] = False
 
 db = sqlite3.connect('BancoDeDados.db')
 DATABASE = 'BancoDeDados.db'
@@ -26,7 +39,7 @@ DATABASE = 'BancoDeDados.db'
 google_bp = make_google_blueprint(
     client_id=client_id,
     client_secret=client_secret,
-    #reprompt_consent=True,
+    reprompt_consent=True,
     scope=["profile", "email"],
     redirect_to="authorized_google"
 )
@@ -135,41 +148,61 @@ def login():
 # Autenticação do usuário via google
 @app.route('/login/google')
 def login_google():
+    if google.authorized:
+        return redirect(url_for('authorized_google'))
     return redirect(url_for('google.login'))
+
 
 
 # Lidando com a resposta da autenticação
 @app.route('/login/google/authorized')
 def authorized_google():
+    # Verifique se o usuário foi autenticado com sucesso
+    if not google.authorized:
+        print("Falha na autenticação do usuário via Google")
+        return redirect(url_for('google.login'))
+
     response = google.get("/oauth2/v2/userinfo")
     if not response.ok:
+        print("Erro ao obter informações do perfil do usuário")
         return 'Falha ao obter o perfil do usuário', 400
     
     user_info = response.json()
-    email = user_info['email']
+    email = user_info.get('email')
     nome = user_info.get('name', 'Usuário')
-    
+    print("Tentando login para o email:", email)
+
     try:
         db = get_connection()
         cursor = db.cursor()
+        
+        # Verifique se o usuário já existe
         cursor.execute("SELECT * FROM Usuarios WHERE email=?", (email,))
         user = cursor.fetchone()
-
+        
         if user is None:
-            cursor.execute("INSERT INTO Usuarios (email, nome, satus) VALUES (?, ?, ?)", (email, nome, 'ativo'))
+            # Cria o usuário se ele não existir
+            print("Usuário não encontrado no banco de dados. Criando novo usuário.")
+            cursor.execute("INSERT INTO Usuarios (email, nome, status) VALUES (?, ?, ?)", (email, nome, 'ativo'))
             db.commit()
             user_id = cursor.lastrowid
+            print("Usuário criado com ID:", user_id)
         else:
             user_id = user['id']
+            print("Usuário existente encontrado com ID:", user_id)
         
-        #Armazenar info da sessão
+        # Configurar as informações de sessão
         session['user_id'] = user_id
         session['email'] = email
+        print("Sessão iniciada para o usuário ID:", user_id)
         
+        # Redireciona para a página principal do frontend
         return redirect('http://localhost:3000/home')
     
     except sqlite3.Error as e:
+        print("Erro ao manipular o banco de dados:", e)
         return jsonify({'error': str(e)}), 500
+    
     finally:
         db.close()
     
@@ -250,7 +283,6 @@ def activate_user(user_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
-
 
 
 
