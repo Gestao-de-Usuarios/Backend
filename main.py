@@ -4,8 +4,6 @@ from flask_dance.contrib.google import make_google_blueprint, google
 from dotenv import load_dotenv
 import os
 import sqlite3
-import bcrypt
-import base64
 
 app = Flask(__name__, static_folder='../Frontend/build', static_url_path='/')
 
@@ -128,8 +126,7 @@ def login():
         return jsonify({'error': 'Email e senha são obrigatórios'}), 400
 
     email = data.get('email')
-    senha = data.get('senha').encode('utf-8') # Converte a senha para bytes
-
+    senha = data.get('senha')
     try:
         db = get_connection()
         cursor = db.cursor()
@@ -214,7 +211,7 @@ def authorized_google():
         print("Sessão iniciada para o usuário ID:", user_id)
         
         # Redireciona para a página principal do frontend
-        return redirect('http://localhost:3000/home')
+        return redirect('http://localhost:5000/home')
     
     except sqlite3.Error as e:
         print("Erro ao manipular o banco de dados:", e)
