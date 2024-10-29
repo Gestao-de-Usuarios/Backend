@@ -1,13 +1,17 @@
 from flask import Flask, jsonify, request, redirect, url_for, session, send_from_directory
 from flask_cors import CORS
 from flask_dance.contrib.google import make_google_blueprint, google
+from flask_dance.contrib.github import make_github_blueprint, github
 from dotenv import load_dotenv
 import os
 import sqlite3
 
+load_dotenv()
+
 app = Flask(__name__, static_folder='../Frontend/build', static_url_path='/')
 
-load_dotenv()
+#app.secret_key = os.environ.get("FLASK_SECRET_KEY", "chave_secreta_de_desenvolvimento")
+
 
 CORS(app)  # Cors permite o front-end acessar os dados da API
 
@@ -22,7 +26,6 @@ os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 DATABASE = 'BancoDeDados.db'
 
 
-
 #criação de uma rota para autenticar o usuário via google
 google_bp = make_google_blueprint(
     client_id=client_id_google,
@@ -31,8 +34,18 @@ google_bp = make_google_blueprint(
     scope=["profile", "email"],
     redirect_to="authorized_google"
 )
-
 app.register_blueprint(google_bp, url_prefix="/login")
+
+
+#criação de uma rota para autenticar o usuário via github
+github_bp = make_github_blueprint(
+    client_id=os.getenv("CLIENT_ID_GITHUB"),
+    client_secret=os.getenv("CLIENT_SECRET_GITHUB"),
+    redirect_to="authorized_github"
+)
+app.register_blueprint(github_bp, url_prefix="/login")
+
+
 
 
 def get_connection():
@@ -153,9 +166,6 @@ def login():
 
 
 
-
-
-
 # Autenticação do usuário via google
 @app.route('/api/login/google')
 def login_google():
@@ -164,6 +174,11 @@ def login_google():
     return redirect(url_for('google.login'))
 
 
+@app.route('/api/login/github')
+def login_github():
+    if github.authorized:
+        return redirect(url_for('authorized_github'))
+    return redirect(url_for('github.login'))
 
 
 
@@ -171,6 +186,7 @@ def login_google():
 # Lidando com a resposta da autenticação
 @app.route('/api/login/google/authorized')
 def authorized_google():
+    
     # Verifique se o usuário foi autenticado com sucesso
     if not google.authorized:
         print("Falha na autenticação do usuário via Google")
@@ -220,6 +236,56 @@ def authorized_google():
     finally:
         db.close()
     
+
+@app.route('/api/login/github/authorized')
+def authorized_github():
+    
+    if not github.authorized:
+        print("Falha na autenticação do usuário via Github")
+        return redirect(url_for('github.login'))
+
+    response = github.get("/user")
+    if not response.ok:
+        print("Erro ao obter informações do perfil do usuário")
+        return 'Falha ao obter o perfil do usuário', 400
+    
+    user_info = response.json()
+    email = user_info.get('email')
+    nome = user_info.get('name', 'Usuário')
+    print("Tentando login para o email:", email)
+    
+    try:
+        db = get_connection()
+        cursor = db.cursor()
+        
+        # Verifique se o usuário já existe
+        cursor.execute("SELECT * FROM Usuarios WHERE email=?", (email,))
+        user = cursor.fetchone()
+        
+        if user is None:
+            # Cria o usuário se ele não existir
+            print("Usuário não encontrado no banco de dados. Criando novo usuário.")
+            cursor.execute("INSERT INTO Usuarios (email, nome, status) VALUES (?, ?, ?)", (email, nome, 'ativo'))
+            db.commit()
+            user_id = cursor.lastrowid
+            print("Usuário criado com ID:", user_id)
+        else:
+            user_id = user['id']
+            print("Usuário existente encontrado com ID:", user_id)
+        
+        # Configurar as informações de sessão
+        session['user_id'] = user_id
+        session['email'] = email
+        print("Sessão iniciada para o usuário ID:", user_id)
+
+        return redirect('http://localhost:5000/home')
+
+    except sqlite3.Error as e:
+        print("Erro ao manipular o banco de dados:", e)
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        db.close()
 
 
 
