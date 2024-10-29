@@ -1,44 +1,34 @@
-from flask import Flask, jsonify, request, redirect, url_for, session
+from flask import Flask, jsonify, request, redirect, url_for, session, send_from_directory
 from flask_cors import CORS
 from flask_dance.contrib.google import make_google_blueprint, google
-from flask_session import Session
+from dotenv import load_dotenv
 import os
 import sqlite3
 import bcrypt
 import base64
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../Frontend/build', static_url_path='/')
 
-# Session configuration
-app.secret_key = "your-secret-key"
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = None
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production
+load_dotenv()
 
-Session(app)
+CORS(app)  # Cors permite o front-end acessar os dados da API
 
-CORS(app, supports_credentials=True)  # Cors permite o front-end acessar os dados da API
-
-client_id = "918255099801-l8jhvmphhep1v8uq1g914aab2ck533i5.apps.googleusercontent.com"
-client_secret = "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"
-app.secret_key = "teste123"
+client_id_google = os.getenv("CLIENT_ID_GOOGLE")
+client_secret_google = os.getenv("CLIENT_SECRET_GOOGLE")
+app.secret_key = os.urandom(24)
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
-#app.config['SESSION_COOKIE_SECURE'] = False
-
-db = sqlite3.connect('BancoDeDados.db')
+#db = sqlite3.connect('BancoDeDados.db')
 DATABASE = 'BancoDeDados.db'
 
 
 
 #criação de uma rota para autenticar o usuário via google
 google_bp = make_google_blueprint(
-    client_id=client_id,
-    client_secret=client_secret,
+    client_id=client_id_google,
+    client_secret=client_secret_google,
     reprompt_consent=True,
     scope=["profile", "email"],
     redirect_to="authorized_google"
@@ -61,10 +51,21 @@ def init_db():
         db.commit()
 
 
+# Rota para servir o index.html
+@app.route('/')
+def serve():
+    return send_from_directory(app.static_folder, 'index.html')
+
+# Rota para servir outros arquivos estáticos (opcional)
+@app.errorhandler(404)
+def not_found(e):
+    return send_from_directory(app.static_folder, 'index.html')
+
 @app.route('/initdb')
 def init_database():
     init_db()
     return 'Database initialized', 200
+
 
 
 # Get com a visualização da senha do usuário hasheada
@@ -77,14 +78,19 @@ def get_users():
         rows = cursor.fetchall()
         rows = [dict(row) for row in rows]
         
-        for row in rows:
-            row['senha'] = base64.b64encode(row['senha']).decode('utf-8')  # Converte o hash da senha para string, pode ser comentado se nãoquiser visualizar a senha
+        # for row in rows:
+        #     row['senha'] = base64.b64encode(row['senha']).decode('utf-8')  # Converte o hash da senha para string, pode ser comentado se nãoquiser visualizar a senha
         
         return jsonify(rows)
     except sqlite3.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+
+
+
 
 
 # Get sem a visualização da senha do usuário
@@ -104,6 +110,11 @@ def get_user(user_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+
+
+
 
 
 
@@ -132,7 +143,7 @@ def login():
         if user['status'] == 'bloqueado':
             return jsonify({'error': 'Usário bloqueado'}), 400
 
-        if bcrypt.checkpw(senha, user['senha']):
+        if senha == user['senha']:
             return jsonify({'message': 'Login bem-sucedido'}), 200
         
         else:
@@ -145,8 +156,11 @@ def login():
 
 
 
+
+
+
 # Autenticação do usuário via google
-@app.route('/login/google')
+@app.route('/api/login/google')
 def login_google():
     if google.authorized:
         return redirect(url_for('authorized_google'))
@@ -154,8 +168,11 @@ def login_google():
 
 
 
+
+
+
 # Lidando com a resposta da autenticação
-@app.route('/login/google/authorized')
+@app.route('/api/login/google/authorized')
 def authorized_google():
     # Verifique se o usuário foi autenticado com sucesso
     if not google.authorized:
@@ -207,6 +224,11 @@ def authorized_google():
         db.close()
     
 
+
+
+
+
+
 #################################### CADASTRO ############################################
 
 @app.route('/signup', methods=['POST'])
@@ -218,11 +240,10 @@ def signup():
         return jsonify({'error': 'Email, senha e nome são obrigatórios'}), 400
 
     email = data.get('email')
-    senha = data.get('senha').encode('utf-8') # Converte a senha strings para bytes
+    senha = data.get('senha') #.encode('utf-8') # Converte a senha strings para bytes
     nome = data.get('nome')
 
-    # Gerando o hash da senha
-    hashed_senha = bcrypt.hashpw(senha, bcrypt.gensalt())
+    # Gerando o hash da senha hashed_senha = bcrypt.hashpw(senha, bcrypt.gensalt())
 
     try:
         db = get_connection()
@@ -234,7 +255,7 @@ def signup():
         if user is not None:
             return jsonify({'error': 'Email ja esta Cadastrado!'}), 400
 
-        cursor.execute("INSERT INTO Usuarios (email, senha, nome) VALUES (?, ?, ?)", (email, hashed_senha, nome))
+        cursor.execute("INSERT INTO Usuarios (email, senha, nome) VALUES (?, ?, ?)", (email, senha, nome))
         db.commit()
 
         return jsonify({'message': 'Usário criado com sucesso'}), 200
@@ -243,6 +264,9 @@ def signup():
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+
 
 
 
@@ -267,6 +291,8 @@ def block_user(user_id):
 
 
 
+
+
 # Ativação de um usuário (cmd): curl -X PUT http://127.0.0.1:5000/users/1/activate
 @app.route('/users/<int:user_id>/activate', methods=['PUT'])
 def activate_user(user_id):
@@ -283,8 +309,6 @@ def activate_user(user_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
-
-
 
 
 
