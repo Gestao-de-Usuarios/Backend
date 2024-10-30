@@ -5,18 +5,17 @@ from flask_dance.contrib.github import make_github_blueprint, github
 from dotenv import load_dotenv
 import os
 import sqlite3
+import random
+import string
+from envio_email import enviar_email
+
 
 load_dotenv()
 
 app = Flask(__name__, static_folder='../Frontend/build', static_url_path='/')
 
-#app.secret_key = os.environ.get("FLASK_SECRET_KEY", "chave_secreta_de_desenvolvimento")
-
-
 CORS(app)  # Cors permite o front-end acessar os dados da API
 
-client_id_google = os.getenv("CLIENT_ID_GOOGLE")
-client_secret_google = os.getenv("CLIENT_SECRET_GOOGLE")
 app.secret_key = os.urandom(24)
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
@@ -28,8 +27,8 @@ DATABASE = 'BancoDeDados.db'
 
 #criação de uma rota para autenticar o usuário via google
 google_bp = make_google_blueprint(
-    client_id=client_id_google,
-    client_secret=client_secret_google,
+    client_id=os.getenv("CLIENT_ID_GOOGLE"),
+    client_secret=os.getenv("CLIENT_SECRET_GOOGLE"),
     reprompt_consent=True,
     scope=["profile", "email"],
     redirect_to="authorized_google"
@@ -140,6 +139,7 @@ def login():
 
     email = data.get('email')
     senha = data.get('senha')
+    
     try:
         db = get_connection()
         cursor = db.cursor()
@@ -373,6 +373,41 @@ def activate_user(user_id):
     finally:
         db.close()
 
+
+
+########################################### Forgot Password ##############################################
+
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json()
+    email = data.get('email')
+
+    if not email:
+        return jsonify({'error': 'Email obrigatório'}), 400
+
+    try:
+        db = get_connection()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM Usuarios WHERE email=?", (email,))
+        user = cursor.fetchone()
+
+        if user is None:
+            return jsonify({'message': 'Se este email estiver cadastrado, uma nova senha será enviada.'}), 200
+        
+        nova_senha = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        
+        cursor.execute("UPDATE Usuarios SET senha=?, data_ultima_atualizacao=CURRENT_TIMESTAMP WHERE email=?", (nova_senha, email))
+        db.commit()
+
+        # Enviar email de restabelecimento de senha
+        enviar_email(email, nova_senha)
+
+        return jsonify({'message': 'Email de recuperação enviado com sucesso'}), 200
+        
+    except sqlite3.Error as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
 
 
 if __name__ == '__main__':

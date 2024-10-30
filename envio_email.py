@@ -8,24 +8,21 @@ load_dotenv()
 
 email = os.getenv("EMAIL")
 
-def enviar_email():
-    
-
-    remetente = "email.teste.geren@gmail.com"
-    destinatario = "hisham8597@uorak.com"
-    
-    assunto = "Envio de token de segurança para atualização da senha"
-    
-    corpo = """
+def enviar_email(destinatario, nova_senha):
+    remetente = email
+    assunto = "Sua Nova Senha"
+    corpo = f"""
     Prezado usuário,
 
-    Caso você tenha esquecido sua senha tente atualizar a mesma utilizando o token informado.
-    
+    Conforme solicitado, sua nova senha é: {nova_senha}
+
+    Por favor, faça login com esta senha e altere-a imediatamente por motivos de segurança.
+
     Atenciosamente,
     Equipe de Suporte
     """
 
-    # Carregar a senha do arquivo .env
+    # Carregar a senha do email do arquivo .env
     senha = os.getenv("EMAIL_PASSWORD")
 
     # Configurando o servidor SMTP do Gmail
@@ -34,8 +31,7 @@ def enviar_email():
 
     try:
         # Fazendo login no servidor SMTP usando a senha do arquivo .env
-        server.login('email.teste.geren@gmail.com', senha)
-
+        server.login(remetente, senha)
 
         msg = MIMEMultipart()
         msg['From'] = remetente
@@ -51,6 +47,3 @@ def enviar_email():
 
     finally:
         server.quit()
-
-# Executar envio de phishing
-enviar_email()
