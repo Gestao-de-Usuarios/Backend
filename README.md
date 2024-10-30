@@ -24,6 +24,7 @@ Este é o backend de uma aplicação de gerenciamento de usuários construída c
 backend/
 ├── BancoDeDados.db
 ├── schema.sql
+├── envio_email.py
 ├── main.py
 ├── requirements.txt
 └── README.md
@@ -119,6 +120,11 @@ O servidor estará disponível em http://127.0.0.1:5000/ por padrão.
    - **Método**: `PUT`
    - **Descrição**: Ativa um usuário previamente bloqueado.
 
-## 🔒 Segurança
-- **Hashing de Senhas**: As senhas dos usuários são armazenadas de forma segura utilizando bcrypt.
-- **CORS**: Configurado com Flask-Cors para permitir que o frontend acesse a API.
+## Antes de rodar a aplicação:
+Certifique-se de ter realizado todos os passos do Frontend, principalmente o uso do comando 'npm run build' que ira tornar duas aplicação inteiras em apenas uma.
+
+Após estarem todas as duas partes dentro de uma mesma pasta rode o comando python.py  
+
+### OBS:
+O .venv e o .env devem estar apenas na pasta Backend 
+
