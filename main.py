@@ -84,20 +84,16 @@ def get_users():
     try:
         db = get_connection()
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM Usuarios")
+        cursor.execute("SELECT id, email, nome, status, data_criacao, data_ultima_atualizacao FROM Usuarios")
         rows = cursor.fetchall()
         rows = [dict(row) for row in rows]
         
-        # for row in rows:
-        #     row['senha'] = base64.b64encode(row['senha']).decode('utf-8')  # Converte o hash da senha para string, pode ser comentado se nãoquiser visualizar a senha
-        
         return jsonify(rows)
     except sqlite3.Error as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Erro na rota /users: {e}")  # Log do erro
+        return jsonify({'error': 'Erro interno do servidor.'}), 500
     finally:
         db.close()
-
-
 
 
 
