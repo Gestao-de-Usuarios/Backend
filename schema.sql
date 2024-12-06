@@ -98,14 +98,19 @@ CREATE TABLE IF NOT EXISTS Produtos
 
 
 -- Inserção de produtos na tabela Produtos
-INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES
-    ('Smartphone XYZ', 2999.99, 'Eletrônicos', 'Smartphone com 128GB de armazenamento e câmera de 48MP.', 50),
-    ('Notebook ABC', 5499.50, 'Eletrônicos', 'Notebook com processador Intel i7, 16GB RAM e SSD de 512GB.', 30),
-    ('Camiseta Branca', 59.90, 'Vestuário', 'Camiseta branca de algodão, tamanho M.', 100),
-    ('Jeans Azul', 149.90, 'Vestuário', 'Calça jeans azul escura, corte slim.', 80),
-    ('Tênis Esportivo', 199.99, 'Calçados', 'Tênis esportivo confortável para corrida.', 60),
-    ('Relógio Digital', 89.90, 'Acessórios', 'Relógio digital com múltiplas funções.', 40),
-    ('Fone de Ouvido Bluetooth', 129.90, 'Eletrônicos', 'Fone de ouvido Bluetooth com cancelamento de ruído.', 70),
-    ('Bolsa de Couro', 249.90, 'Acessórios', 'Bolsa de couro legítimo, tamanho médio.', 25),
-    ('Livro "Introdução à Programação"', 79.90, 'Livros', 'Livro didático sobre conceitos básicos de programação.', 120),
-    ('Cadeira Ergonômica', 399.90, 'Móveis', 'Cadeira ergonômica ajustável para escritório.', 15);
+
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Headset Gamer Thunder', 299.90, 'Eletrônicos', 'Headset com som surround 7.1 e microfone destacável.', 45);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Monitor UltraWide 29"', 1299.90, 'Eletrônicos', 'Monitor ultrawide IPS Full HD, ideal para multitarefa.', 20);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Camiseta Preta', 59.90, 'Vestuário', 'Camiseta de algodão preta, tamanho G.', 90);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Jaqueta de Couro', 499.90, 'Vestuário', 'Jaqueta de couro sintético, forro interno macio.', 25);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Sapato Social', 249.90, 'Calçados', 'Sapato social masculino em couro legítimo.', 35);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Chinelo de Borracha', 29.90, 'Calçados', 'Chinelo confortável para uso diário.', 200);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Colar de Pérolas', 399.90, 'Acessórios', 'Colar de pérolas sintéticas, fecho banhado a prata.', 15);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Pulseira de Aço Inoxidável', 59.90, 'Acessórios', 'Pulseira resistente à água e à corrosão.', 50);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Livro "Python Avançado"', 99.90, 'Livros', 'Livro detalhando técnicas avançadas de Python.', 60);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Livro "Design Patterns"', 89.90, 'Livros', 'Livro sobre padrões de projeto de software.', 40);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Mesa de Jantar Redonda', 899.90, 'Móveis', 'Mesa de jantar em madeira maciça para 4 lugares.', 10);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Estante para Livros', 299.90, 'Móveis', 'Estante em MDF com 5 prateleiras.', 12);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Tapete Decorativo', 149.90, 'Móveis', 'Tapete de fibras sintéticas, 2m x 1,5m.', 25);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Smartwatch Fit', 199.90, 'Eletrônicos', 'Smartwatch com monitoramento de atividades e sono.', 50);
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES    ('Kindle Reader', 499.90, 'Eletrônicos', 'Leitor de e-books com tela antirreflexo.', 30);

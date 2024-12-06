@@ -10,13 +10,14 @@ import string
 import jwt
 import datetime
 from envio_email import enviar_email
+from middleware import login_required, admin_required
 
 load_dotenv()
 
 app = Flask(__name__, static_folder='../Frontend/build', static_url_path='/')
 
 # Configuração de CORS para permitir credenciais e especificar a origem do frontend
-CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
+CORS(app, supports_credentials=True, origins=["http://localhost:5000"])
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
@@ -90,6 +91,7 @@ def create_jwt_token(user_id, email, tipo_usuario):
 
 
 @app.route('/users', methods=['GET'])
+@admin_required
 def get_users():
     try:
         db = get_connection()
@@ -108,6 +110,7 @@ def get_users():
 
 
 @app.route('/users/<int:user_id>', methods=['GET'])
+@admin_required
 def get_user(user_id):
     try:
         db = get_connection()
@@ -355,6 +358,7 @@ def signup():
 
 
 @app.route('/users/<int:user_id>/block', methods=['PUT'])
+@admin_required
 def block_user(user_id):
     try:
         db = get_connection()
@@ -376,6 +380,7 @@ def block_user(user_id):
 
 # Ativação de um usuário (cmd): curl -X PUT http://127.0.0.1:5000/users/1/activate
 @app.route('/users/<int:user_id>/activate', methods=['PUT'])
+@admin_required
 def activate_user(user_id):
     try:
         db = get_connection()
@@ -433,6 +438,7 @@ def forgot_password():
 
 
 @app.route('/products', methods=['GET'])
+@login_required
 def get_products():
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
@@ -449,7 +455,7 @@ def get_products():
     # Suponha que você tenha uma tabela "Produtos" no banco de dados.
     db = get_connection()
     cursor = db.cursor()
-    cursor.execute("SELECT id, nome, preco, categoria FROM Produtos")
+    cursor.execute("SELECT id, nome, preco, categoria, estoque FROM Produtos")
     rows = cursor.fetchall()
     db.close()
 
