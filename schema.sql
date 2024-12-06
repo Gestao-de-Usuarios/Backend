@@ -80,3 +80,32 @@ INSERT INTO Usuarios (email, senha, nome, status, tipo_usuario) VALUES ('sandra@
 INSERT INTO Usuarios (email, senha, nome, status, tipo_usuario) VALUES ('tadeu@example.com', 'senha123', 'Tadeu Nascimento', 'ativo', 'comum' );
 INSERT INTO Usuarios (email, senha, nome, status, tipo_usuario) VALUES ('vitoria@example.com', 'senha123', 'Vitória Luz', 'ativo', 'comum' );
 INSERT INTO Usuarios (email, senha, nome, status, tipo_usuario) VALUES ('yasmin@example.com', 'senha123', 'Yasmin Torres', 'ativo', 'comum' );
+
+
+-- Criação da tabela de produtos
+CREATE TABLE IF NOT EXISTS Produtos
+(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,                                           -- ID único e auto-incrementado
+    nome VARCHAR (255) NOT NULL,                                                     -- Nome do produto
+    preco DECIMAL (10, 2) NOT NULL,                                                  -- Preço do produto
+    categoria VARCHAR (100) NOT NULL,                                               -- Categoria do produto
+    descricao TEXT,                                                                 -- Descrição do produto
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,                                -- Data de criação do produto
+    data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP,                            -- Data de última atualização do produto
+    estoque INTEGER DEFAULT 0,                                                      -- Quantidade em estoque
+    UNIQUE (nome)                                                                   -- O nome do produto deve ser único
+);
+
+
+-- Inserção de produtos na tabela Produtos
+INSERT INTO Produtos (nome, preco, categoria, descricao, estoque) VALUES
+    ('Smartphone XYZ', 2999.99, 'Eletrônicos', 'Smartphone com 128GB de armazenamento e câmera de 48MP.', 50),
+    ('Notebook ABC', 5499.50, 'Eletrônicos', 'Notebook com processador Intel i7, 16GB RAM e SSD de 512GB.', 30),
+    ('Camiseta Branca', 59.90, 'Vestuário', 'Camiseta branca de algodão, tamanho M.', 100),
+    ('Jeans Azul', 149.90, 'Vestuário', 'Calça jeans azul escura, corte slim.', 80),
+    ('Tênis Esportivo', 199.99, 'Calçados', 'Tênis esportivo confortável para corrida.', 60),
+    ('Relógio Digital', 89.90, 'Acessórios', 'Relógio digital com múltiplas funções.', 40),
+    ('Fone de Ouvido Bluetooth', 129.90, 'Eletrônicos', 'Fone de ouvido Bluetooth com cancelamento de ruído.', 70),
+    ('Bolsa de Couro', 249.90, 'Acessórios', 'Bolsa de couro legítimo, tamanho médio.', 25),
+    ('Livro "Introdução à Programação"', 79.90, 'Livros', 'Livro didático sobre conceitos básicos de programação.', 120),
+    ('Cadeira Ergonômica', 399.90, 'Móveis', 'Cadeira ergonômica ajustável para escritório.', 15);

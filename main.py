@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, redirect, url_for, session, send_from_directory
+from flask import Flask, jsonify, request, redirect, url_for, send_from_directory
 from flask_cors import CORS
 from flask_dance.contrib.google import make_google_blueprint, google
 from flask_dance.contrib.github import make_github_blueprint, github
@@ -7,8 +7,9 @@ import os
 import sqlite3
 import random
 import string
+import jwt
+import datetime
 from envio_email import enviar_email
-from middleware import requires_permissions, requires_permissions_or_view_only
 
 load_dotenv()
 
@@ -17,14 +18,12 @@ app = Flask(__name__, static_folder='../Frontend/build', static_url_path='/')
 # Configuração de CORS para permitir credenciais e especificar a origem do frontend
 CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
-app.secret_key = os.urandom(24)
-
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
-#db = sqlite3.connect('BancoDeDados.db')
 DATABASE = 'BancoDeDados.db'
 
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "secret_jwt_key")
 
 #criação de uma rota para autenticar o usuário via google
 google_bp = make_google_blueprint(
@@ -79,9 +78,18 @@ def init_database():
     return 'Database initialized', 200
 
 
+def create_jwt_token(user_id, email, tipo_usuario):
+    payload = {
+        'user_id': user_id,
+        'email': email,
+        'tipo_usuario': tipo_usuario,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=5)
+    }
+    token = jwt.encode(payload, JWT_SECRET_KEY, algorithm='HS256')
+    return token
+
+
 @app.route('/users', methods=['GET'])
-@requires_permissions_or_view_only('admin')
-# @requires_permissions('admin')
 def get_users():
     try:
         db = get_connection()
@@ -100,7 +108,6 @@ def get_users():
 
 
 @app.route('/users/<int:user_id>', methods=['GET'])
-@requires_permissions('admin')
 def get_user(user_id):
     try:
         db = get_connection()
@@ -144,16 +151,15 @@ def login():
             return jsonify({'error': 'Email ou senha inválidos'}), 400
         
         if user['status'] == 'bloqueado':
-            return jsonify({'error': 'Usário bloqueado'}), 400
+            return jsonify({'error': 'Usuário bloqueado'}), 400
 
-        session['user_id'] = user['id']
-        session['email'] = user['email']
-        session['tipo_usuario'] = user['tipo_usuario']
-
+        # Gerar token JWT
+        token = create_jwt_token(user['id'], user['email'], user['tipo_usuario'])
     
         return jsonify({
             'message': 'Login bem-sucedido',
-            'tipo_usuario': user['tipo_usuario']
+            'tipo_usuario': user['tipo_usuario'],
+            'token': token
         }), 200
 
     except sqlite3.Error as e:
@@ -178,12 +184,22 @@ def login_github():
 # Rota para obter o tipo de usuário
 @app.route('/api/user-type', methods=['GET'])
 def get_user_type():
-    if 'tipo_usuario' in session:
-        return jsonify({'tipo_usuario': session['tipo_usuario']}), 200
-    else:
-        return jsonify({'error': 'Usuário não autenticado'}), 401
 
-# Lidando com a resposta da autenticação via Google
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Token não fornecido'}), 401
+
+    token = auth_header.split(' ')[1]
+
+    try:
+        decoded = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+        return jsonify({'tipo_usuario': decoded.get('tipo_usuario')}), 200
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expirado'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Token inválido'}), 401
+
+
 @app.route('/api/login/google/authorized')
 def authorized_google():
     
@@ -216,21 +232,22 @@ def authorized_google():
             cursor.execute("INSERT INTO Usuarios (email, nome, status, tipo_usuario) VALUES (?, ?, ?, ?)", (email, nome, 'ativo', 'comum'))
             db.commit()
             user_id = cursor.lastrowid
+            # Obter o usuário recém criado
+            cursor.execute("SELECT * FROM Usuarios WHERE id=?", (user_id,))
+            user = cursor.fetchone()
             print("Usuário criado com ID:", user_id)
         else:
             user_id = user['id']
             print("Usuário existente encontrado com ID:", user_id)
         
-        # Configurar as informações de sessão
-        session['user_id'] = user_id
-        session['email'] = email
-        session['tipo_usuario'] = user['tipo_usuario']
-        print("Sessão iniciada para o usuário ID:", user_id)
+        # Criar token JWT
+        token = create_jwt_token(user['id'], user['email'], user['tipo_usuario'])
         
         # Retornar uma resposta de sucesso
         return jsonify({
             'message': 'Login via Google bem-sucedido',
-            'tipo_usuario': user['tipo_usuario']
+            'tipo_usuario': user['tipo_usuario'],
+            'token': token
         }), 200
 
     except sqlite3.Error as e:
@@ -273,21 +290,21 @@ def authorized_github():
             cursor.execute("INSERT INTO Usuarios (email, nome, status, tipo_usuario) VALUES (?, ?, ?, ?)", (email, nome, 'ativo', 'comum'))
             db.commit()
             user_id = cursor.lastrowid
+            cursor.execute("SELECT * FROM Usuarios WHERE id=?", (user_id,))
+            user = cursor.fetchone()
             print("Usuário criado com ID:", user_id)
         else:
             user_id = user['id']
             print("Usuário existente encontrado com ID:", user_id)
         
-        # Configurar as informações de sessão
-        session['user_id'] = user_id
-        session['email'] = email
-        session['tipo_usuario'] = user['tipo_usuario']
-        print("Sessão iniciada para o usuário ID:", user_id)
+        # Criar token JWT
+        token = create_jwt_token(user['id'], user['email'], user['tipo_usuario'])
 
         # Retornar uma resposta de sucesso
         return jsonify({
             'message': 'Login via GitHub bem-sucedido',
-            'tipo_usuario': user['tipo_usuario']
+            'tipo_usuario': user['tipo_usuario'],
+            'token': token
         }), 200
 
     except sqlite3.Error as e:
@@ -338,7 +355,6 @@ def signup():
 
 
 @app.route('/users/<int:user_id>/block', methods=['PUT'])
-@requires_permissions('admin')
 def block_user(user_id):
     try:
         db = get_connection()
@@ -360,7 +376,6 @@ def block_user(user_id):
 
 # Ativação de um usuário (cmd): curl -X PUT http://127.0.0.1:5000/users/1/activate
 @app.route('/users/<int:user_id>/activate', methods=['PUT'])
-@requires_permissions('admin')
 def activate_user(user_id):
     try:
         db = get_connection()
@@ -411,6 +426,36 @@ def forgot_password():
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+
+########################################### Products ##############################################
+
+
+@app.route('/products', methods=['GET'])
+def get_products():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Token não fornecido'}), 401
+
+    token = auth_header.split(' ')[1]
+    try:
+        decoded = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expirado'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Token inválido'}), 401
+
+    # Suponha que você tenha uma tabela "Produtos" no banco de dados.
+    db = get_connection()
+    cursor = db.cursor()
+    cursor.execute("SELECT id, nome, preco, categoria FROM Produtos")
+    rows = cursor.fetchall()
+    db.close()
+
+    products_list = [dict(row) for row in rows]
+    return jsonify(products_list), 200
+
 
 
 if __name__ == '__main__':
