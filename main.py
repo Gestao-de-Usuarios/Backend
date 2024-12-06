@@ -8,13 +8,14 @@ import sqlite3
 import random
 import string
 from envio_email import enviar_email
-
+from middleware import requires_permissions, requires_permissions_or_view_only
 
 load_dotenv()
 
 app = Flask(__name__, static_folder='../Frontend/build', static_url_path='/')
 
-CORS(app)  # Cors permite o front-end acessar os dados da API
+# Configuração de CORS para permitir credenciais e especificar a origem do frontend
+CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
 app.secret_key = os.urandom(24)
 
@@ -71,15 +72,16 @@ def serve():
 def not_found(e):
     return send_from_directory(app.static_folder, 'index.html')
 
+
 @app.route('/initdb')
 def init_database():
     init_db()
     return 'Database initialized', 200
 
 
-
-# Get com a visualização da senha do usuário hasheada
 @app.route('/users', methods=['GET'])
+@requires_permissions_or_view_only('admin')
+# @requires_permissions('admin')
 def get_users():
     try:
         db = get_connection()
@@ -90,22 +92,20 @@ def get_users():
         
         return jsonify(rows)
     except sqlite3.Error as e:
-        print(f"Erro na rota /users: {e}")  # Log do erro
+        print(f"Erro na rota /users: {e}")
         return jsonify({'error': 'Erro interno do servidor.'}), 500
     finally:
         db.close()
 
 
 
-
-
-# Get sem a visualização da senha do usuário
 @app.route('/users/<int:user_id>', methods=['GET'])
+@requires_permissions('admin')
 def get_user(user_id):
     try:
         db = get_connection()
         cursor = db.cursor()
-        cursor.execute("SELECT id, email, nome, status, data_criacao, data_ultima_atualizacao FROM Usuarios WHERE id=?", (user_id,))  # Não retorna a senha
+        cursor.execute("SELECT * FROM Usuarios WHERE id=?", (user_id,))
         row = cursor.fetchone()
         if row:
             row = dict(row)
@@ -116,9 +116,6 @@ def get_user(user_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
-
-
-
 
 
 
@@ -143,43 +140,50 @@ def login():
         cursor.execute("SELECT * FROM Usuarios WHERE email=?", (email,))
         user = cursor.fetchone()
 
-        if user is None:
+        if user is None or senha != user['senha']:
             return jsonify({'error': 'Email ou senha inválidos'}), 400
         
         if user['status'] == 'bloqueado':
             return jsonify({'error': 'Usário bloqueado'}), 400
 
-        if senha == user['senha']:
-            return jsonify({'message': 'Login bem-sucedido'}), 200
-        
-        else:
-            return jsonify({'error': 'Email ou senha inválidos'}), 400
+        session['user_id'] = user['id']
+        session['email'] = user['email']
+        session['tipo_usuario'] = user['tipo_usuario']
+
+    
+        return jsonify({
+            'message': 'Login bem-sucedido',
+            'tipo_usuario': user['tipo_usuario']
+        }), 200
 
     except sqlite3.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
 
-
-
-# Autenticação do usuário via google
+# Autenticação do usuário via Google
 @app.route('/api/login/google')
 def login_google():
     if google.authorized:
         return redirect(url_for('authorized_google'))
     return redirect(url_for('google.login'))
 
-
+# Autenticação do usuário via GitHub
 @app.route('/api/login/github')
 def login_github():
     if github.authorized:
         return redirect(url_for('authorized_github'))
     return redirect(url_for('github.login'))
 
+# Rota para obter o tipo de usuário
+@app.route('/api/user-type', methods=['GET'])
+def get_user_type():
+    if 'tipo_usuario' in session:
+        return jsonify({'tipo_usuario': session['tipo_usuario']}), 200
+    else:
+        return jsonify({'error': 'Usuário não autenticado'}), 401
 
-
-
-# Lidando com a resposta da autenticação
+# Lidando com a resposta da autenticação via Google
 @app.route('/api/login/google/authorized')
 def authorized_google():
     
@@ -209,7 +213,7 @@ def authorized_google():
         if user is None:
             # Cria o usuário se ele não existir
             print("Usuário não encontrado no banco de dados. Criando novo usuário.")
-            cursor.execute("INSERT INTO Usuarios (email, nome, status) VALUES (?, ?, ?)", (email, nome, 'ativo'))
+            cursor.execute("INSERT INTO Usuarios (email, nome, status, tipo_usuario) VALUES (?, ?, ?, ?)", (email, nome, 'ativo', 'comum'))
             db.commit()
             user_id = cursor.lastrowid
             print("Usuário criado com ID:", user_id)
@@ -220,11 +224,15 @@ def authorized_google():
         # Configurar as informações de sessão
         session['user_id'] = user_id
         session['email'] = email
+        session['tipo_usuario'] = user['tipo_usuario']
         print("Sessão iniciada para o usuário ID:", user_id)
         
-        # Redireciona para a página principal do frontend
-        return redirect('http://localhost:5000/home')
-    
+        # Retornar uma resposta de sucesso
+        return jsonify({
+            'message': 'Login via Google bem-sucedido',
+            'tipo_usuario': user['tipo_usuario']
+        }), 200
+
     except sqlite3.Error as e:
         print("Erro ao manipular o banco de dados:", e)
         return jsonify({'error': str(e)}), 500
@@ -233,11 +241,12 @@ def authorized_google():
         db.close()
     
 
+# Lidando com a resposta da autenticação via GitHub
 @app.route('/api/login/github/authorized')
 def authorized_github():
     
     if not github.authorized:
-        print("Falha na autenticação do usuário via Github")
+        print("Falha na autenticação do usuário via GitHub")
         return redirect(url_for('github.login'))
 
     response = github.get("/user")
@@ -261,7 +270,7 @@ def authorized_github():
         if user is None:
             # Cria o usuário se ele não existir
             print("Usuário não encontrado no banco de dados. Criando novo usuário.")
-            cursor.execute("INSERT INTO Usuarios (email, nome, status) VALUES (?, ?, ?)", (email, nome, 'ativo'))
+            cursor.execute("INSERT INTO Usuarios (email, nome, status, tipo_usuario) VALUES (?, ?, ?, ?)", (email, nome, 'ativo', 'comum'))
             db.commit()
             user_id = cursor.lastrowid
             print("Usuário criado com ID:", user_id)
@@ -272,9 +281,14 @@ def authorized_github():
         # Configurar as informações de sessão
         session['user_id'] = user_id
         session['email'] = email
+        session['tipo_usuario'] = user['tipo_usuario']
         print("Sessão iniciada para o usuário ID:", user_id)
 
-        return redirect('http://localhost:5000/home')
+        # Retornar uma resposta de sucesso
+        return jsonify({
+            'message': 'Login via GitHub bem-sucedido',
+            'tipo_usuario': user['tipo_usuario']
+        }), 200
 
     except sqlite3.Error as e:
         print("Erro ao manipular o banco de dados:", e)
@@ -282,8 +296,6 @@ def authorized_github():
     
     finally:
         db.close()
-
-
 
 
 
@@ -299,25 +311,23 @@ def signup():
         return jsonify({'error': 'Email, senha e nome são obrigatórios'}), 400
 
     email = data.get('email')
-    senha = data.get('senha') #.encode('utf-8') # Converte a senha strings para bytes
+    senha = data.get('senha')
     nome = data.get('nome')
+    tipo_usuario = data.get('tipo_usuario', 'comum')
 
-    # Gerando o hash da senha hashed_senha = bcrypt.hashpw(senha, bcrypt.gensalt())
 
     try:
         db = get_connection()
         cursor = db.cursor()
 
         cursor.execute("SELECT * FROM Usuarios WHERE email=?", (email,))
-        user = cursor.fetchone()
+        if cursor.fetchone():
+            return jsonify({'error': 'Email já está cadastrado!'}), 400
 
-        if user is not None:
-            return jsonify({'error': 'Email ja esta Cadastrado!'}), 400
-
-        cursor.execute("INSERT INTO Usuarios (email, senha, nome) VALUES (?, ?, ?)", (email, senha, nome))
+        cursor.execute("INSERT INTO Usuarios (email, senha, nome, tipo_usuario) VALUES (?, ?, ?, ?)", (email, senha, nome, tipo_usuario))
         db.commit()
 
-        return jsonify({'message': 'Usário criado com sucesso'}), 200
+        return jsonify({'message': 'Usuário criado com sucesso'}), 200
 
     except sqlite3.Error as e:
         return jsonify({'error': str(e)}), 500
@@ -327,10 +337,8 @@ def signup():
 
 
 
-
-
-
 @app.route('/users/<int:user_id>/block', methods=['PUT'])
+@requires_permissions('admin')
 def block_user(user_id):
     try:
         db = get_connection()
@@ -339,7 +347,7 @@ def block_user(user_id):
         cursor.execute("UPDATE Usuarios SET status='bloqueado', data_ultima_atualizacao=CURRENT_TIMESTAMP WHERE id=?", (user_id,))
         db.commit()
 
-        return jsonify({'message': 'Usário bloqueado com sucesso'}), 200
+        return jsonify({'message': 'Usuário bloqueado com sucesso'}), 200
 
     except sqlite3.Error as e:
         return jsonify({'error': str(e)}), 500
@@ -350,10 +358,9 @@ def block_user(user_id):
 
 
 
-
-
 # Ativação de um usuário (cmd): curl -X PUT http://127.0.0.1:5000/users/1/activate
 @app.route('/users/<int:user_id>/activate', methods=['PUT'])
+@requires_permissions('admin')
 def activate_user(user_id):
     try:
         db = get_connection()
